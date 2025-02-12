@@ -43,23 +43,37 @@
 (defun rand-nth (lst)
   (nth (random (length lst)) lst))
 
-(defun terrain ()
-  (let* ((w (+ 10 (random 40)))
-         (h (+ 10 (random 20))))
-    (loop for y to h
-          collect
-          (apply #'concatenate 'string
-                 (loop for x to w
-                       collect (rand-nth (list WOODS
-                                               PLAYER
-                                               FIELD
-                                               PIT
-                                               WATER)))))))
+(defun terrain (w h)
+  (loop for y to h
+        collect
+        (apply #'concatenate 'string
+               (loop for x to w
+                     collect (rand-nth (list WOODS
+                                             FIELD
+                                             PIT
+                                             WATER))))))
+
+(defun draw-map (terr w h player-x player-y)
+  (loop for x to w do
+    (progn
+      (loop for y to h do
+        (let ((outc
+                (if (and (equal x player-x)
+                         (equal y player-y))
+                    PLAYER
+                    (elt (elt terr y) x))))
+          (princ (string outc))))
+      (format t "~%"))))
+
 (defun main ()
   (format t "Welcome to rectumon!~%")
   (loop do
-    (loop for row in (terrain)
-          do (write-line row))
+    (let* ((w (+ 10 (random 40)))
+           (h (+ 7 (random 15)))
+           (player-loc (list (random w)
+                             (random h)))
+           (terr (terrain w h)))
+      (draw-map terr w h (car player-loc) (cadr player-loc)))
     (format t "Please type a key...")
     (force-output)
     (let ((key (read-single-keystroke)))
