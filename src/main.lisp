@@ -62,13 +62,15 @@
                                           WATER))
                           FIELD))))
 
-(defun map-with-player (terr w h player-loc)
-  ;; Superimpose the player on the terrain
-  (let ((new-terr (copy-seq terr)))
-    (setf (elt (elt new-terr (cadr player-loc))
-               (car player-loc))
-          PLAYER)
-    new-terr))
+(defun map-with-player (terr player-loc)
+  (loop for y below (length terr)
+        collect
+        (loop for x below (length (elt terr 0))
+              collect
+              (if (and (equal x (car player-loc))
+                       (equal y (cadr player-loc)))
+                  PLAYER
+                  (elt (elt terr y) x)))))
 
 (defun map-as-str (terr)
   (format nil "~{~{~a~}~^~%~}" terr))
@@ -148,7 +150,7 @@
 
 (defun draw-game (terr w h player-loc)
   (clear-map h)
-  (princ (map-as-str (map-with-player terr w h player-loc)))
+  (princ (map-as-str (map-with-player terr player-loc)))
   (back (1+ (- w (player-x player-loc))))
   (up (- h (player-y player-loc))))
 
@@ -168,6 +170,20 @@
       (draw-game terr w h player-loc)
       (let ((key (read-single-keystroke)))
         (move-to-end-of-map h player-loc)
-        (when (char= key #\q)
-          (format t "~%Bye!~%")
-          (return-from main))))))
+        (cond
+          ((char= key #\q)
+           (progn
+             (format t "~%Bye!~%")
+             (return-from main)))
+          ((char= key #\k)
+           (when (> (player-y player-loc) 0)
+             (decf (cadr player-loc))))
+          ((char= key #\j)
+           (when (< (player-y player-loc) h)
+             (incf (cadr player-loc))))
+          ((char= key #\h)
+           (when (> (player-x player-loc) 0)
+             (decf (car player-loc))))
+          ((char= key #\l)
+           (when (< (player-x player-loc) w)
+             (incf (car player-loc)))))))))
