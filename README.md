@@ -1,5 +1,10 @@
 Small little toy project to play around with Common Lisp some more.
 
+Prerequisites:
+
+- SBCL
+- `make`
+
 ```
 $  make
 ./build.sh
