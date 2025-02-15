@@ -140,6 +140,18 @@
           (force-output)))
       (when (< y h) (format t "~%")))))
 
+(defun move-to-end-of-map (h player-loc)
+  (down (- h (player-y player-loc))))
+
+(defun clear-space-for-map (h)
+  (print-lines h))
+
+(defun draw-game (terr w h player-loc)
+  (clear-map h)
+  (princ (map-as-str (map-with-player terr w h player-loc)))
+  (back (1+ (- w (player-x player-loc))))
+  (up (- h (player-y player-loc))))
+
 (defun main ()
   (format t "Welcome to rectumon!~%")
   (seed-random)
@@ -151,16 +163,11 @@
          (first-time t))
     (loop do
       (when first-time
-        (print-lines h))
-      (clear-map h)
-      (princ (map-as-str (map-with-player terr w h player-loc)))
-      (back (1+ (- w (player-x player-loc))))
-      (up (- h (player-y player-loc)))
-      ;; (fresh-line)
+        (clear-space-for-map h))
       (setf first-time nil)
+      (draw-game terr w h player-loc)
       (let ((key (read-single-keystroke)))
-        (down (- h (player-y player-loc)))
+        (move-to-end-of-map h player-loc)
         (when (char= key #\q)
           (format t "~%Bye!~%")
-          (return-from main)))
-      (forward (- h (player-y player-loc))))))
+          (return-from main))))))
