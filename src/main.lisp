@@ -128,6 +128,12 @@
 (defun player-y (loc)
   (cadr loc))
 
+(defsetf player-x (loc) (new-x)
+  `(setf (car ,loc) ,new-x))
+
+(defsetf player-y (loc) (new-y)
+  `(setf (cadr ,loc) ,new-y))
+
 (defun draw-map (terr w h player-x player-y)
   (loop for y to h do
     (progn
@@ -177,13 +183,13 @@
              (return-from main)))
           ((char= key #\k)
            (when (> (player-y player-loc) 0)
-             (decf (cadr player-loc))))
+             (decf (player-y player-loc))))
           ((char= key #\j)
            (when (< (player-y player-loc) h)
-             (incf (cadr player-loc))))
+             (incf (player-y player-loc))))
           ((char= key #\h)
            (when (> (player-x player-loc) 0)
-             (decf (car player-loc))))
+             (decf (player-x player-loc))))
           ((char= key #\l)
            (when (< (player-x player-loc) w)
-             (incf (car player-loc)))))))))
+             (incf (player-x player-loc)))))))))
