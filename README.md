@@ -5,6 +5,14 @@ Prerequisites:
 - SBCL
 - `make`
 
+# Building
+
+To build the project, simply run `make` in the root directory. This will compile the project and create an executable called `rectumon`.
+
+To install in $BINDIR, run `make install`.
+
+![rectumon in action](https://github.com/eigenhombre/gifs/blob/master/gifs/rectumon0.gif)
+
 ```
 $  make
 ./build.sh
@@ -47,4 +55,4 @@ Welcome to rectumon!
 v....~.....^......~.........^.^.............^^^.v..
 Bye!
 $
-```
+````
