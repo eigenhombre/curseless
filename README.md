@@ -1,8 +1,13 @@
 Small little toy [roguelike](https://en.wikipedia.org/wiki/Roguelike) to play around with Common Lisp some more:
 
-- Explore [CLOS](https://en.wikipedia.org/wiki/Common_Lisp_Object_System) and generic functions
-- Explore use of LLMs to generate many descriptive phrases of the
-  same "terrain" in advance
+- Explore
+  [CLOS](https://en.wikipedia.org/wiki/Common_Lisp_Object_System) and
+  generic functions
+- Explore use of LLMs to generate many descriptive phrases of the same
+  "terrain" in advance
+- [Curses-like](https://en.wikipedia.org/wiki/Curses_(programming_library)
+  behavior without using the actual library (just use ANSI escape codes
+  directly)
 
 # Building
 
