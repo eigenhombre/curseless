@@ -5,9 +5,10 @@ Small little toy [roguelike](https://en.wikipedia.org/wiki/Roguelike) to play ar
   generic functions
 - Explore use of LLMs to generate many descriptive phrases of the same
   "terrain" in advance
-- [Curses-like](https://en.wikipedia.org/wiki/Curses_(programming_library)
-  behavior without using the actual library (just use ANSI escape codes
-  directly)
+- `curses`-like behavior[^1] without using the actual library (just
+  use ANSI escape codes directly)
+
+[^1]: https://en.wikipedia.org/wiki/Curses_(programming_library)
 
 # Building
 
