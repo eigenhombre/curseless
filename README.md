@@ -8,7 +8,7 @@ Small little toy [roguelike](https://en.wikipedia.org/wiki/Roguelike) to play ar
 
 Prerequisites:
 
-- SBCL
+- [SBCL](https://en.wikipedia.org/wiki/Steel_Bank_Common_Lisp)
 - `make`
 
 To build the project, simply run `make` in the root directory. This will compile the project and create an executable called `rectumon`.
