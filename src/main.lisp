@@ -1,32 +1,6 @@
 (in-package #:rectumon)
 
-(defun read-single-keystroke ()
-  (let* ((fd (sb-sys:fd-stream-fd sb-sys:*stdin*))
-         ;; Get original terminal settings
-         (orig-termios (sb-posix:tcgetattr fd))
-         (new-termios (make-instance 'sb-posix:termios)))
-    (setf (sb-posix:termios-iflag new-termios)
-          (sb-posix:termios-iflag orig-termios)
-
-          (sb-posix:termios-oflag new-termios)
-          (sb-posix:termios-oflag orig-termios)
-
-          (sb-posix:termios-cflag new-termios)
-          (sb-posix:termios-cflag orig-termios)
-
-          (sb-posix:termios-lflag new-termios)
-          (logand (sb-posix:termios-lflag orig-termios)
-                  (lognot sb-posix:icanon)
-                  (lognot sb-posix:echo))
-
-          (sb-posix:termios-cc new-termios)
-          (sb-posix:termios-cc orig-termios))
-    ;; Apply new settings
-    (sb-posix:tcsetattr fd sb-posix:tcsanow new-termios)
-    (unwind-protect
-         (read-char)  ; Read a single character, blocking
-      ;; Restore original settings
-      (sb-posix:tcsetattr fd sb-posix:tcsanow orig-termios))))
+(defparameter +screen-width+ 80)
 
 (defun seed-random ()
   (setf *random-state* (make-random-state t)))
@@ -38,6 +12,7 @@
                         (defparameter ,symbol nil)
                         (setq ,symbol (string ,char-str))))))
 
+;; Set indents for defterrain:
 (eval-when (:compile-toplevel :load-toplevel :execute)
   (setf (get 'defterrain 'common-lisp-indent-function) '(1 &body)))
 
@@ -48,10 +23,7 @@
   PIT "v"
   WATER "~")
 
-(defun rand-nth (lst)
-  (nth (random (length lst)) lst))
-
-(defun terrain (w h)
+(defun generate-terrain (w h)
   (loop for y to h
         collect
         (loop for x to w
@@ -62,150 +34,206 @@
                                           WATER))
                           FIELD))))
 
-(defun map-with-player (terr player-loc)
-  (loop for y below (length terr)
-        collect
-        (loop for x below (length (elt terr 0))
-              collect
-              (if (and (equal x (car player-loc))
-                       (equal y (cadr player-loc)))
-                  PLAYER
-                  (elt (elt terr y) x)))))
+(defmethod repr (x) (format nil "~a" x))
 
-(defun map-as-str (terr)
-  (format nil "~{~{~a~}~^~%~}" terr))
+(defclass location ()
+  ((x :accessor x :initarg :x)
+   (y :accessor y :initarg :y)))
 
-(defun up (n)
-  (loop repeat n do
-    (format t "~c[1A" #\escape)  ; Equivalent to "\033[F"
-    (force-output)))
+(defmethod repr ((l location)) (format nil "(~a, ~a)" (x l) (y l)))
 
-(defun up-one-line () (up 1))
+(defclass player ()
+  ((location :accessor location :initarg :location)))
 
-(defun down (n)
-  (loop repeat n do
-    (format t "~C[B" #\Escape))
-  (force-output))
+(defun make-player (x y)
+  (make-instance 'player :location (make-instance 'location :x x :y y)))
 
-(defun down-one-line () (down 1))
+(defmethod repr ((p player))
+  (format nil "Player at ~a" (repr (location p))))
 
-(defun beginning-of-line ()
-  (format t "~c[1G" #\escape))
+(comment
+ (repr (make-player 3 4))
+ ;;=>
+ '"Player at (3, 4)")
 
-(defun clear-line ()
-  "Clears the current line in the terminal."
-  (format t "~c[2K" #\escape)  ; Equivalent to "\033[K"
-  (force-output))
+(defclass game ()
+  ((terrain :accessor terrain :initarg :terrain)
+   (player :accessor player :initarg :player)
+   (message :accessor game-message :initarg :message)
+   (width :accessor width :initarg :width)
+   (height :accessor height :initarg :height)))
 
-(defun back (n)
-  (loop repeat n do
-    (format t "~C[D" #\Escape))
-  (force-output))
+(defun make-game (w h)
+  (let* ((player-x (random w))
+         (player-y (random h))
+         (player (make-player player-x player-y))
+         (terr (generate-terrain w h)))
+    (make-instance 'game
+                   :terrain terr
+                   :player player
+                   :message ""
+                   :width w
+                   :height h)))
 
-(defun back-one-space ()
-  (back 1))
+(defmethod set-message ((g game) msg)
+  (setf (game-message g) msg))
 
-(defun forward (n)
-  (loop repeat n do
-    (format t "~C[C" #\Escape))
-  (force-output))
+;; Return the available width for descriptions
+(defun description-width (w)
+  (- +screen-width+ w 1))
 
-(defun forward-one-space ()
-  (forward 1))
+(defun split-words (sentence)
+  (cl-ppcre:split "\\s+" sentence))
 
-(defun clear-map (h)
-  (loop repeat h do
-    (up-one-line)
-    (beginning-of-line)
-    (clear-line)))
+(defun join-words (words)
+  (reduce (lambda (a b) (concatenate 'string a " " b))
+          words))
 
-(defun print-lines (n)
-  (loop repeat n do (format t "~%")))
+(defun words-length (words)
+  ;; Line length of words joined together with spaces:
+  (length (join-words words)))
 
-(defun player-x (loc)
-  (car loc))
+(words-length '(""))
+(words-length '("a"))
+(words-length '("a" "b"))
 
-(defun player-y (loc)
-  (cadr loc))
+(defun phrases-fitting-available-width (sentence w)
+  (let ((words (split-words sentence))
+        (width (description-width w)))
+    ;; Collect a list words fitting into width; in each line, a single
+    ;; space is added to the end of each word except the last one.
+    (loop with line = ()
+          with lines = ()
+          for word in words
+          do
+             (if (< (words-length (cons word line)) width)
+                 (push word line)
+                 (progn
+                   (push (join-words (reverse line)) lines)
+                   (setf line (list word))))
+             (pop words)
+          finally
+             (when line
+               (push (join-words (reverse line)) lines))
+             (return (reverse lines)))))
 
-(defsetf player-x (loc) (new-x)
-  `(setf (car ,loc) ,new-x))
+(phrases-fitting-available-width (random-field-description) 40)
+;;=>
+'("A light mist rises from the ground,"
+  "blurring the horizon with soft"
+  "tendrils of white.")
 
-(defsetf player-y (loc) (new-y)
-  `(setf (cadr ,loc) ,new-y))
+(defun terrain-row (row-num player-pos terrain-row)
+  (format nil "~{~a~}"
+          (if (not (equal (y player-pos) row-num))
+              terrain-row
+              (loop for x from 0
+                    for c in terrain-row
+                    collect (if (equal x (x player-pos))
+                                (highlight-char #\@)
+                                c)))))
 
-(defun draw-map (terr w h player-x player-y)
-  (loop for y to h do
-    (progn
-      (loop for x to w do
-        (let ((outc
-                (if (and (equal x player-x)
-                         (equal y player-y))
-                    PLAYER
-                    (elt (elt terr y) x))))
-          ;; Avoid format/escape issue, use princ:
-          (princ (string outc))
-          (force-output)))
-      (when (< y h) (format t "~%")))))
-
-(defun move-to-end-of-map (h player-loc)
-  (down (- h (player-y player-loc))))
-
-(defun clear-space-for-map (h)
-  (print-lines h))
-
-(defun draw-game (terr w h player-loc)
-  (clear-map h)
-  (princ (map-as-str (map-with-player terr player-loc)))
-  (back (1+ (- w (player-x player-loc))))
-  (up (- h (player-y player-loc))))
+(defun board-str (terr pos message description board-width)
+  (let* ((desc-w (description-width board-width))
+         (description-lines (phrases-fitting-available-width
+                             description
+                             desc-w))
+         (lines
+           (loop for terrain-row in terr
+                 for y from 0
+                 for is-player-row = (equal y (y pos))
+                 for terrain-str = (terrain-row y pos terrain-row)
+                 for desc-str = (if description-lines
+                                    (pop description-lines)
+                                    nil)
+                 collect (str (clear-line-sequence)
+                              (if desc-str
+                                  (str terrain-str " " desc-str)
+                                  terrain-str)))))
+    (format nil "~{~A~^~%~}" (nconc lines (list message)))))
 
 (defun move (player-loc w h dx dy)
-  (let ((new-x (+ (player-x player-loc) dx))
-        (new-y (+ (player-y player-loc) dy)))
+  (let ((new-x (+ (x player-loc) dx))
+        (new-y (+ (y player-loc) dy)))
     (if (and (>= new-x 0)
              (<= new-x w)
              (>= new-y 0)
              (<= new-y h))
-        (setf (player-x player-loc) new-x
-              (player-y player-loc) new-y))))
+        (setf (x player-loc) new-x
+              (y player-loc) new-y))))
+
+(defun terrain-at (loc terr)
+  (elt (elt terr (y loc)) (x loc)))
+
+(defun in-woods-p (loc terr)
+  (equal (terrain-at loc terr) WOODS))
+
+(defun in-field-p (loc terr)
+  (equal (terrain-at loc terr) FIELD))
+
+(defun in-pit-p (loc terr)
+  (equal (terrain-at loc terr) PIT))
+
+(defun in-water-p (loc terr)
+  (equal (terrain-at loc terr) WATER))
+
+(defun location-description (player-location terr)
+  (cond
+    ((in-field-p player-location terr)
+     (random-field-description))
+    ((in-woods-p player-location terr)
+     (random-forest-description))
+    ((in-pit-p player-location terr)
+     "")  ;; Display in message area
+    ((in-water-p player-location terr)
+     (random-water-description))
+    (t
+     "You are in an unknown place.")))
+
+(defmethod repr ((g game))
+  (board-str (terrain g)
+             (location (player g))
+             (game-message g)
+             (location-description (location (player g))
+                                   (terrain g))
+             (width g)))
+
+(defun draw-game (g)
+  (clj-print (repr g))
+  (up (+ 2 (height g))))
 
 (defun main ()
   (format t "Welcome to rectumon!~%")
   (seed-random)
-  (let* ((w (+ 30 (random 40)))
+  (hide-cursor)
+  (let* ((w (+ 20 (random 20)))
          (h (+ 5 (random 10)))
-         (player-loc (list (random w)
-                           (random h)))
-         (terr (terrain w h))
-         (first-time t))
+         (g (make-game w h))
+         (player-loc (location (player g)))
+         (terr (terrain g)))
     (loop do
-      (when first-time
-        (clear-space-for-map h))
-      (setf first-time nil)
-      (draw-game terr w h player-loc)
+      (when (in-pit-p player-loc terr)
+        (progn
+          (set-message g "You fall into a pit!")
+          (draw-game g)
+          (down (+ 2 (height g)))
+          (read-single-keystroke)
+          (println)
+          (return)))
+      (draw-game g)
+      (fresh-line)
       (let ((key (read-single-keystroke)))
-        (move-to-end-of-map h player-loc)
-        (cond
-          ((char= key #\q)
-           (progn
-             (format t "~%Bye!~%")
-             (return-from main)))
-          ;; NetHack-equiv. direction keys:
-          ((char= key #\k)
-           (move player-loc w h 0 -1))
-          ((char= key #\j)
-           (move player-loc w h 0 1))
-          ((char= key #\h)
-           (move player-loc w h -1 0))
-          ((char= key #\l)
-           (move player-loc w h 1 0))
-          ((char= key #\y)
-           (move player-loc w h -1 -1))
-          ((char= key #\u)
-           (move player-loc w h 1 -1))
-          ((char= key #\b)
-           (move player-loc w h -1 1))
-          ((char= key #\n)
-           (move player-loc w h 1 1)))))))
-
+        (case key
+          (#\q
+           (down (height g))
+           (format t "~%Bye!~%")
+           (return))
+          (#\k (move player-loc w h 0 -1))
+          (#\j (move player-loc w h 0 1))
+          (#\h (move player-loc w h -1 0))
+          (#\l (move player-loc w h 1 0))
+          (#\y (move player-loc w h -1 -1))
+          (#\u (move player-loc w h 1 -1))
+          (#\b (move player-loc w h -1 1))
+          (#\n (move player-loc w h 1 1))))))
+  (restore-cursor))

@@ -1,3 +1,5 @@
-(defpackage rectumon
-  (:use :cl :arrows)
-  (:export :main))
+(defpackage #:rectumon
+  (:use #:cl #:arrows #:cl-oju)
+  (:export #:generate-terrain
+           #:main
+           #:*default-terrain*))
