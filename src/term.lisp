@@ -1,4 +1,4 @@
-(in-package #:rectumon)
+(in-package #:curseless)
 
 (defun read-single-keystroke ()
   (let* ((fd (sb-sys:fd-stream-fd sb-sys:*stdin*))

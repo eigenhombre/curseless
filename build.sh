@@ -9,5 +9,5 @@ sbcl --non-interactive \
      --disable-debugger \
      --eval '(pushnew (truename ".") ql:*local-project-directories*)' \
      --eval '(ql:register-local-projects)' \
-     --eval '(ql:quickload :rectumon)' \
-     --eval '(progn (sb-ext:disable-debugger) (sb-ext:save-lisp-and-die "rectumon" :toplevel #'"'"'rectumon:main :executable t))'
+     --eval '(ql:quickload :curseless)' \
+     --eval '(progn (sb-ext:disable-debugger) (sb-ext:save-lisp-and-die "curseless" :toplevel #'"'"'curseless:main :executable t))'

@@ -10,5 +10,5 @@ sbcl --non-interactive \
      --eval '(pushnew (truename ".") ql:*local-project-directories*)' \
      --eval '(ql:register-local-projects)' \
      --eval '(ql:quickload :1AM)' \
-     --eval '(ql:quickload :rectumon)' \
-     --eval '(asdf:test-system :rectumon/test)'
+     --eval '(ql:quickload :curseless)' \
+     --eval '(asdf:test-system :curseless/test)'

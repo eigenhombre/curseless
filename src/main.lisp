@@ -1,4 +1,4 @@
-(in-package #:rectumon)
+(in-package #:curseless)
 
 (defparameter +screen-width+ 80)
 
@@ -203,7 +203,7 @@
   (up (+ 2 (height g))))
 
 (defun main ()
-  (format t "Welcome to rectumon!~%")
+  (format t "Welcome to curseless!~%")
   (seed-random)
   (hide-cursor)
   (let* ((w (+ 20 (random 20)))

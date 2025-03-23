@@ -1,14 +1,14 @@
 .PHONY: clean install test
 
-rectumon: src/*.lisp
+curseless: src/*.lisp
 	./build.sh
 
 test:
 	./test.sh
 
 clean:
-	rm -rf rectumon
+	rm -rf curseless
 
-install: rectumon
+install: curseless
 	test -n "$(BINDIR)"  # $$BINDIR
-	cp rectumon ${BINDIR}
+	cp curseless ${BINDIR}

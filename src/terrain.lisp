@@ -1,4 +1,4 @@
-(in-package #:rectumon)
+(in-package #:curseless)
 
 (defun s-expression-to-sentence (sexp)
   (let* ((with-commas (mapcar (lambda (x)
